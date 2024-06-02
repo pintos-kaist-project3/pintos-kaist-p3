@@ -1,6 +1,7 @@
 #ifndef VM_VM_H
 #define VM_VM_H
 #include <stdbool.h>
+#include "kernel/hash.h"
 #include "threads/palloc.h"
 #include "kernel/hash.h"
 
@@ -49,6 +50,20 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+	struct hash_elem h_elem;
+
+	/* 어디에 존재하는지? (frame, disk, swap 중 어디에 존재하는지 )*/
+	enum {
+		FRAME,
+		DISK,
+		SWAP
+	};
+
+	/* 상응하는 커널 가상 주소 */
+	void *kva;
+
+	/* active한지 inactive 한지 */
+	bool is_active;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -56,6 +71,8 @@ struct page {
 		struct uninit_page uninit;
 		struct anon_page anon;
 		struct file_page file;
+
+	
 #ifdef EFILESYS
 		struct page_cache page_cache;
 #endif
@@ -91,6 +108,20 @@ struct page_operations {
  * All designs up to you for this. */
 struct supplemental_page_table {
 	struct hash spt_hash;
+
+	// /* 어디에 존재하는지? (frame, disk, swap 중 어디에 존재하는지 )*/
+	// enum {
+	// 	FRAME,
+	// 	DISK,
+	// 	SWAP
+	// };
+	
+	// /* 상응하는 커널 가상 주소 */
+	// void *kva;
+
+	// /* active한지 inactive 한지 */
+	// bool is_active;
+
 };
 
 #include "threads/thread.h"
