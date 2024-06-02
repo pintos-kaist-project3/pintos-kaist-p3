@@ -9,6 +9,7 @@
     "*.inc": "c",
     "palloc.h": "c",
     "filesys.h": "c",
-    "file.h": "c"
+    "file.h": "c",
+    "mmu.h": "c"
   }
 }
