@@ -4,6 +4,7 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -63,20 +64,24 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
-	/* TODO: Fill this function. */
+	struct page *page;
+	struct hash_elem *e;
 
-	return page;
+	page->va = va;
+
+	e = hash_find(&spt->spt_hash, &page->hash_elem);
+	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
-	int succ = false;
-	/* TODO: Fill this function. */
-
-	return succ;
+	// 가상주소가 존재하는지 검사 (추가 구현 사항)
+	lock_acquire(&page->hash_lock);
+	struct hash_elem *e = hash_insert(&spt->spt_hash,&page->hash_elem);
+	lock_release(&page->hash_lock);
+	return e != NULL ? false : true;
 }
 
 void
@@ -176,7 +181,7 @@ vm_do_claim_page (struct page *page) {
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	
-	hash_init(&(spt->spt_hash), )
+	hash_init(&(spt->spt_hash), page_hash, page_less, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
@@ -193,8 +198,15 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 }
 
 
-uint64_t hash_func (const struct hash_elem *e, void *aux) {
-	struct page* page = hash_entry(e, struct page, h_elem);
+uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED) {
+	const struct page* page = hash_entry(e, struct page, hash_elem);
 
-	return page;
+	return hash_bytes(&page->va, sizeof page->va);
+}
+
+bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,void * aux UNUSED) {
+	const struct page *a = hash_entry(a_, struct page, hash_elem);
+	const struct page *b = hash_entry(b_, struct page, hash_elem);
+
+	return a->va < b->va;
 }
