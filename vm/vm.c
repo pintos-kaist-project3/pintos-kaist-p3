@@ -177,7 +177,6 @@ void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	
 	hash_init(&(spt->spt_hash), )
-
 }
 
 /* Copy supplemental page table from src to dst */
