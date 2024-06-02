@@ -7,7 +7,7 @@
  * initialization callback that passed from vm_alloc_page_with_initializer
  * function.
  * */
-
+// 모든 페이지는 초기에 'uninit 페이지로 생성'   
 #include "vm/vm.h"
 #include "vm/uninit.h"
 
@@ -43,6 +43,9 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 }
 
 /* Initalize the page on first fault */
+
+// 첫 번째 페이지 폴트가 발생하면 호출   
+// 페이지 객체를 초기화하여 페이지를 특정 페이지 객체로 변환 
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
@@ -59,7 +62,9 @@ uninit_initialize (struct page *page, void *kva) {
 /* Free the resources hold by uninit_page. Although most of pages are transmuted
  * to other page objects, it is possible to have uninit pages when the process
  * exit, which are never referenced during the execution.
- * PAGE will be freed by the caller. */
+ * PAGE will be freed by the caller. */  
+
+// uninit_page가 차지하고 있는 자원 해제, 프로세스 종료 시 실행 중에 한번도 참조되지 않은 uninit페이지가 있을 수 있으므로 자원을 해제해야한다. 
 static void
 uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;

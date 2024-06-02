@@ -2,6 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "kernel/hash.h"
 
 enum vm_type {
 	/* page not initialized */
@@ -40,6 +41,8 @@ struct thread;
  * This is kind of "parent class", which has four "child class"es, which are
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
+
+ // 'page' 구조체는 가상 메모리에서의 페이지를 의미하는 구조체이다.  
 struct page {
 	const struct page_operations *operations;
 	void *va;              /* Address in terms of user space */
@@ -60,9 +63,11 @@ struct page {
 };
 
 /* The representation of "frame" */
+// "frame"은 물리 메모리를 의미한다. 
 struct frame {
-	void *kva;
-	struct page *page;
+	void *kva;		// 커널 가상 주소 
+	struct page *page;		// 페이지 구조체를 담기 위한 멤버  
+	// TODO: 프레임 관리 인터페이스를 구현하는 과정에서 다른 멤버 추가 가능
 };
 
 /* The function table for page operations.
@@ -85,6 +90,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
