@@ -128,6 +128,7 @@ struct thread
 	struct file *running;
 	struct intr_frame *parent_if;
 
+
 	/* add code_pro2*/
 
 #ifdef USERPROG

@@ -121,6 +121,7 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+
 }
 
 /* Handle the fault on write_protected page */
@@ -174,6 +175,9 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	
+	hash_init(&(spt->spt_hash), )
+
 }
 
 /* Copy supplemental page table from src to dst */
@@ -187,4 +191,11 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+}
+
+
+uint64_t hash_func (const struct hash_elem *e, void *aux) {
+	struct page* page = hash_entry(e, struct page, h_elem);
+
+	return page;
 }
