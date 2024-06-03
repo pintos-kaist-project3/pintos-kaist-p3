@@ -18,7 +18,8 @@ enum vm_type {
 	/* Bit flags to store state */
 
 	/* Auxillary bit flag marker for store information. You can add more
-	 * markers, until the value is fit in the int. */
+	 * markers, until the value is fit in the int. */  
+	// 정보를 저장하기 위한 보조 비트 플래그 마커  
 	VM_MARKER_0 = (1 << 3),
 	VM_MARKER_1 = (1 << 4),
 
@@ -50,12 +51,14 @@ struct page {
 	/* Your implementation */
 	struct hash_elem hash_elem;
 	struct lock hash_lock;
-
+	bool writable;
 	/* 상용하는 커널 가상 주소*/
 	void *kva;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
+
+	// 
 	union {
 		struct uninit_page uninit;
 		struct anon_page anon;
@@ -118,5 +121,10 @@ bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,void * aux UNUSED) ;
-
+struct frame *vm_get_frame (void);
+static void vm_stack_growth (void *addr UNUSED);
+static bool vm_handle_wp (struct page *page UNUSED);
+static bool vm_do_claim_page (struct page *page);
+static struct frame * vm_get_victim (void) ;
+static struct frame * vm_evict_frame (void);
 #endif  /* VM_VM_H */

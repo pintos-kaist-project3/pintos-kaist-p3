@@ -5,6 +5,10 @@
 #include "vm/inspect.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
+#include "vm/uninit.h"
+#include "threads/synch.h"
+#include "userprog/process.h"
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -42,6 +46,7 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+/* 대기중인 페이지 객체를 초기화*/
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
@@ -55,14 +60,38 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
 		/* TODO: Insert the page into the spt. */
+		struct page *page = (struct page *)malloc(sizeof(struct page));
+		bool is_succ = false;
+		switch (VM_TYPE(type))		// modify
+		{
+		// case VM_UNINIT:
+		// 	is_succ = uninit_initialize(page, upage);
+		// 	uninit_new(page, upage,init, VM_UNINIT,aux, is_succ);
+		// 	break;
+
+		case VM_ANON:
+			uninit_new(page, upage,init,type,aux,anon_initializer);
+			break;
+		
+		case VM_FILE:
+			uninit_new(page, upage,init,type,aux, file_backed_initializer);
+			break;
+		
+		default:
+			break;
+		}
+		page->writable = writable;
+		page->frame = NULL;
+		lock_init(&page->hash_lock); 
+		return spt_insert_page(spt, page);
 	}
 err:
 	return false;
 }
-
 /* Find VA from spt and return page. On error, return NULL. */
+
+/* 보충 페이지 테이블에서 va를 찾아 페이지를 반환 (error일 경우 null return) */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = (struct page *)malloc(sizeof(struct page));
@@ -71,11 +100,13 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	page->va = pg_round_down(va); //해당 페이지의 첫번째 주소값 (offset == 0)
 
 	e = hash_find(&spt->spt_hash, &page->hash_elem);
-
+	free(page);
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
+
+/* 페이지가 유효한지 검하하고 spt 테이블에 페이지를 삽입한다. */
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
@@ -115,7 +146,8 @@ vm_evict_frame (void) {
  * and return it. This always return valid address. That is, if the user pool
  * memory is full, this function evicts the frame to get the available memory
  * space.*/
-static struct frame *
+/* 물리 메모리의 userpool에서 새로운 물리 메모리 페이지를 가져온다. */
+struct frame *
 vm_get_frame (void) {
 	/* TODO: Fill this function. */
 
@@ -149,11 +181,19 @@ bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-	struct page *page = NULL;
+	if (!user){
+		return false;
+	}
+	struct page *page = spt_find_page(spt,addr);
+	if (page == NULL) 
+		return false;
+	if (page->writable == write)
+	if (not_present){
+		return vm_do_claim_page (page);
+	}
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
-	return vm_do_claim_page (page);
+	return false;
 }
 
 /* Free the page.
@@ -165,17 +205,20 @@ vm_dealloc_page (struct page *page) {
 }
 
 /* Claim the page that allocate on VA. */
+/* va에 할당된 페이지를 확보한다. */
 bool
 vm_claim_page (void *va UNUSED) {
-	struct page *page = (struct page *)malloc(sizeof(struct page));
+	// struct page *page = (struct page *)malloc(sizeof(struct page));
 	/* TODO: Fill this function */
-	page->va = pg_round_down(va);
-	
-
-	return vm_do_claim_page (page);
+	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+	struct page *p = spt_find_page(spt, va);
+	if (p == NULL) 
+		return false;
+	return vm_do_claim_page (p);
 }
 
 /* Claim the PAGE and set up the mmu. */
+/* 페이지를 확보하고 mmu를 설정 */
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
@@ -185,13 +228,17 @@ vm_do_claim_page (struct page *page) {
 	frame->page = page;
 	page->frame = frame;
 
+	bool succ = false;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	bool succ = pml4_set_page(cur->pml4, page, frame, true);
-	//succ = swap_in (page, frame->kva);
+	
+	succ = pml4_set_page(cur->pml4, page->va, frame->kva, page->writable);
+	succ = swap_in (page, frame->kva);
+	if (!succ) vm_dealloc_page(page);
 	return succ;
-
 }
 /* Initialize new supplemental page table */
+
+/*보조 페이지 테이블을 초기화*/
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	
@@ -210,13 +257,13 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 }
-
+// hash_elem을 사용해 page를 찾기
 uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED) {
 	const struct page* page = hash_entry(e, struct page, hash_elem);
 
 	return hash_bytes(&page->va, sizeof page->va);
 }
-
+// 비교 함수
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,void * aux UNUSED) {
 	const struct page *a = hash_entry(a_, struct page, hash_elem);
 	const struct page *b = hash_entry(b_, struct page, hash_elem);

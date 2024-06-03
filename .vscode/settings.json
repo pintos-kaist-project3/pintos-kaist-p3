@@ -10,6 +10,12 @@
     "palloc.h": "c",
     "filesys.h": "c",
     "file.h": "c",
-    "mmu.h": "c"
+    "mmu.h": "c",
+    "malloc.h": "c",
+    "flags.h": "c",
+    "off_t.h": "c",
+    "uninit.h": "c",
+    "vm.h": "c",
+    "page_cache.h": "c"
   }
 }
