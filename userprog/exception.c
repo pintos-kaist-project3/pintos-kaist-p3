@@ -136,6 +136,7 @@ page_fault (struct intr_frame *f) {
 
 
 	/* Determine cause. */
+	// page 상태 가져오기 
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
