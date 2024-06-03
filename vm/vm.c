@@ -63,7 +63,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Insert the page into the spt. */
 		struct page *page = (struct page *)malloc(sizeof(struct page));
 		bool is_succ = false;
-		switch (VM_TYPE(type))		// modify
+		switch (VM_TYPE(type))		
 		{
 		// case VM_UNINIT:
 		// 	is_succ = uninit_initialize(page, upage);
@@ -147,7 +147,7 @@ vm_evict_frame (void) {
  * memory is full, this function evicts the frame to get the available memory
  * space.*/
 /* 물리 메모리의 userpool에서 새로운 물리 메모리 페이지를 가져온다. */
-struct frame *
+static struct frame *
 vm_get_frame (void) {
 	/* TODO: Fill this function. */
 
@@ -187,7 +187,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = spt_find_page(spt,addr);
 	if (page == NULL) 
 		return false;
-	if (page->writable == write)
 	if (not_present){
 		return vm_do_claim_page (page);
 	}
@@ -230,7 +229,9 @@ vm_do_claim_page (struct page *page) {
 
 	bool succ = false;
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	
+	if (pml4_get_page(cur->pml4, page->va) != NULL){
+		return false;
+	}
 	succ = pml4_set_page(cur->pml4, page->va, frame->kva, page->writable);
 	succ = swap_in (page, frame->kva);
 	if (!succ) vm_dealloc_page(page);

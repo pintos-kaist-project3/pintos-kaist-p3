@@ -1,13 +1,1 @@
-FAIL
-Kernel panic in run: PANIC at ../../threads/mmu.c:216 in pml4_get_page(): assertion `is_user_vaddr (uaddr)' failed.
-Call stack: 0x80042185a9 0x800420d4cb 0x80042215c4 0x8004221559 0x800421ced5 0x800421ca4a 0x800421c412 0x800421be29 0x8004207734
-Translation of call stack:
-0x00000080042185a9: debug_panic (lib/kernel/debug.c:32)
-0x000000800420d4cb: pml4_get_page (threads/mmu.c:218)
-0x00000080042215c4: vm_do_claim_page (vm/vm.c:232)
-0x0000008004221559: vm_claim_page (vm/vm.c:217)
-0x000000800421ced5: setup_stack (userprog/process.c:954)
-0x000000800421ca4a: load (userprog/process.c:678)
-0x000000800421c412: process_exec (userprog/process.c:406)
-0x000000800421be29: initd (userprog/process.c:157)
-0x0000008004207734: kernel_thread (threads/thread.c:535)
+PASS
