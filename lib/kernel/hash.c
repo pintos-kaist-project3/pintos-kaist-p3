@@ -21,6 +21,7 @@ static void rehash (struct hash *);
 
 /* Initializes hash table H to compute hash values using HASH and
    compare hash elements using LESS, given auxiliary data AUX. */
+
 bool
 hash_init (struct hash *h,
 		hash_hash_func *hash, hash_less_func *less, void *aux) {
@@ -36,6 +37,7 @@ hash_init (struct hash *h,
 		return true;
 	} else
 		return false;
+	
 }
 
 /* Removes all the elements from H.
