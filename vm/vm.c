@@ -65,12 +65,13 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page;
+	struct page *page = (struct page *)malloc(sizeof(struct page));
 	struct hash_elem *e;
 
-	page->va = va;
+	page->va = pg_round_down(va); //해당 페이지의 첫번째 주소값 (offset == 0)
 
 	e = hash_find(&spt->spt_hash, &page->hash_elem);
+
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
@@ -78,6 +79,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
+	
 	// 가상주소가 존재하는지 검사 (추가 구현 사항)
 	lock_acquire(&page->hash_lock);
 	struct hash_elem *e = hash_insert(&spt->spt_hash,&page->hash_elem);
@@ -142,7 +144,7 @@ vm_stack_growth (void *addr UNUSED) {
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp (struct page *page UNUSED) {
-	
+
 }
 
 /* Return true on success */
@@ -170,8 +172,8 @@ bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = (struct page *)malloc(sizeof(struct page));
 	/* TODO: Fill this function */
-	page->va = va;
-	
+	page->va = pg_round_down(va);
+
 
 	return vm_do_claim_page (page);
 }
@@ -188,6 +190,7 @@ vm_do_claim_page (struct page *page) {
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	bool succ = pml4_set_page(cur->pml4, page, frame, true);
+
 	/* 추가 구현 사항: spt hash table에 추가를 해야할까.? */
 
 	//succ = swap_in (page, frame->kva);

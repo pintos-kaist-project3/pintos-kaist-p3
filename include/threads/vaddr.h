@@ -26,9 +26,11 @@
 #define pg_no(va) ((uint64_t) (va) >> PGBITS)
 
 /* Round up to nearest page boundary. */
+//페이지의 해당 주소 마지막 값
 #define pg_round_up(va) ((void *) (((uint64_t) (va) + PGSIZE - 1) & ~PGMASK))
 
 /* Round down to nearest page boundary. */
+//페이지의 해당 주소 첫번째 값
 #define pg_round_down(va) (void *) ((uint64_t) (va) & ~PGMASK)
 
 /* Kernel virtual address start */
