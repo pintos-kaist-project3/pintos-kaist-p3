@@ -154,9 +154,9 @@ void check_address(void *addr)
 	{
 		exit(-1);
 	}
-	if (pml4_get_page(thread_current()->pml4, addr) == NULL)
-		exit(-1);
-}
+	// if (pml4_get_page(thread_current()->pml4, addr) == NULL)
+	// 	exit(-1);
+ }
 
 // 자식 프로세스를 생성하고 프로그램을 실행시키는 시스템 콜
 tid_t exec(const char *cmd_line) // 자식  프로세스 생성 xxx????
