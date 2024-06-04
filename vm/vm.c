@@ -119,10 +119,10 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 					 struct page *page UNUSED)
 {
 	// 가상주소가 존재하는지 검사 (추가 구현 사항)
-	// lock_acquire(&page->hash_lock);
+	lock_acquire(&page->hash_lock);
 	struct hash_elem *e = hash_insert(&spt->spt_hash, &page->hash_elem);
 	// printf("[spt_insert_page]====\n");
-	// lock_release(&page->hash_lock);
+	lock_release(&page->hash_lock);
 	return e == NULL ? true : false;
 }
 
@@ -196,7 +196,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 						 bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 {
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-	if (!is_user_vaddr(addr))
+	if (!is_user_vaddr(addr))	// 유저 address 영역인지 검사 (bool user는 유저모드이면 true, 커널모드이면 false) // modify
 	{
 		return false;
 	}
@@ -207,7 +207,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	if (not_present)
 	{
 		return vm_do_claim_page(page);
-	}
+	}	
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	return false;
@@ -357,8 +357,7 @@ void page_action_copy(struct hash_elem *e, void *aux UNUSED)
 	// 2. uninit 아닐때
 	// vm_alloc_page(VM_ANON,NULL,true);
 	// 3. uninit 일때
-	// vm_alloc_page_with_initializer()
-	// page_get_type
+	// vm_alloc_page_with_initializer(page_get_type(src_page), src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux);
 	
 	// hash_insert(&dst->spt_hash, e);
 	// spt_insert_page(&dst,p);
