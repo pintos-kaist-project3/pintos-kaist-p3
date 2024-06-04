@@ -196,7 +196,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 						 bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 {
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-	if (!user)
+	if (!is_user_vaddr(addr))
 	{
 		return false;
 	}
@@ -359,7 +359,7 @@ void page_action_copy(struct hash_elem *e, void *aux UNUSED)
 	// 3. uninit 일때
 	// vm_alloc_page_with_initializer()
 	// page_get_type
-	// 4.
+	
 	// hash_insert(&dst->spt_hash, e);
 	// spt_insert_page(&dst,p);
 }
