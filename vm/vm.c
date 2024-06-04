@@ -211,14 +211,21 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	{
 		return false;
 	}
+	// page fault가 일어난 페이지 주소 pg_addr
 	void *pg_addr = pg_round_down(addr); // 페이지 시작 주소부터
-
-	thread_current()->rsp = f->rsp;
-
-	intptr_t cur_rsp = thread_current()->rsp;
-
-	printf("22cur_rsp: %p\n",cur_rsp);
+	intptr_t cur_rsp = f->rsp;
 	printf("pgaddr : %p\n", pg_addr);
+	printf("cur_rsp: %p\n",cur_rsp);
+	// printf("11cur_rsp: %p\n",thread_current()->rsp);
+	
+	// thread_current()->rsp = f->rsp;
+
+	// intptr_t cur_rsp = thread_current()->rsp;
+	// printf("22cur_rsp: %p\n",cur_rsp);
+
+	
+	// printf("22cur_rsp: %p\n",cur_rsp);
+	// printf("pgaddr : %p\n", pg_addr);
 	
 	//스택 영역 존재 확인
 	if(pg_addr < cur_rsp && pg_addr >= MAX_STACK) {
