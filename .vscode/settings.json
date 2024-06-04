@@ -20,6 +20,13 @@
     "init.h": "c",
     "thread.h": "c",
     "stdbool.h": "c",
-    "hash.h": "c"
+    "hash.h": "c",
+    "*.tcc": "c",
+    "fstream": "c",
+    "iosfwd": "c",
+    "istream": "c",
+    "limits": "c",
+    "sstream": "c",
+    "streambuf": "c"
   }
 }
