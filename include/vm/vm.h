@@ -127,4 +127,6 @@ static bool vm_handle_wp (struct page *page UNUSED);
 static bool vm_do_claim_page (struct page *page);
 static struct frame * vm_get_victim (void) ;
 static struct frame * vm_evict_frame (void);
+void page_action_copy(struct hash_elem *e, void *aux UNUSED);
+void page_action_kill(struct hash_elem *e, void *aux UNUSED);
 #endif  /* VM_VM_H */

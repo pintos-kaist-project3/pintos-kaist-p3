@@ -272,6 +272,7 @@ __do_fork(void *aux)
 	process_activate(current);
 #ifdef VM
 	supplemental_page_table_init(&current->spt);
+	//current->spt.spt_hash.aux =  current.
 	if (!supplemental_page_table_copy(&current->spt, &parent->spt))
 		goto error;
 #else
@@ -663,7 +664,6 @@ load(const char *file_name, struct intr_frame *if_)
 				// printf("file_page: %d \n", file_page);
 				// printf("mem_page: %d \n", mem_page);
 				// printf("-------load_segment---------\n");
-
 				if (!load_segment(file, file_page, (void *)mem_page,
 								  read_bytes, zero_bytes, writable))
 					goto done;

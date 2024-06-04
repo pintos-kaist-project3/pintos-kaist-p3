@@ -8,6 +8,7 @@
 #include "vm/uninit.h"
 #include "threads/synch.h"
 #include "userprog/process.h"
+#include "lib/string.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -32,6 +33,7 @@ page_get_type(struct page *page)
 	int ty = VM_TYPE(page->operations->type);
 	switch (ty)
 	{
+	// uninit일 경우 해당 페이지가 바뀔 type을 리턴  
 	case VM_UNINIT:
 		return VM_TYPE(page->uninit.type);
 	default:
@@ -69,8 +71,8 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		{
 			// case VM_UNINIT:
 			// 	is_succ = uninit_initialize(page, upage);
-			// 	uninit_new(page, upage,init, VM_UNINIT,aux, is_succ);
 			// 	break;
+			// 	uninit_new(page, upage,init, VM_UNINIT,aux, is_succ);
 
 		case VM_ANON:
 			uninit_new(page, upage, init, type, aux, anon_initializer);
@@ -99,6 +101,9 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 {
 	struct page *page = (struct page *)malloc(sizeof(struct page));
 	struct hash_elem *e;
+
+	if (va ==NULL)
+		return NULL;
 
 	page->va = pg_round_down(va); // 해당 페이지의 첫번째 주소값 (offset == 0)
 
@@ -267,14 +272,21 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 								  struct supplemental_page_table *src UNUSED)
 {
-	struct hash_iterator i;
-	hash_first(&i, &src->spt_hash);
-	while (hash_next(&i))
-	{
-		struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
-		if(p != NULL)
-			hash_insert(&dst->spt_hash, &p->hash_elem);
-	}
+	// struct hash_iterator i;
+	// hash_first(&i, &src->spt_hash);
+	// while (hash_next(&i))
+	// {
+	// 	struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
+	// 	if(p != NULL)
+	// 		hash_insert(&dst->spt_hash, &p->hash_elem);
+	// }
+	// if (hash_size(&dst->spt_hash) == hash_size(&src->spt_hash))
+	// 	return true;
+	// return false;
+
+	src->spt_hash.aux = dst;
+	// spt 테이블 순회
+	hash_apply(&src->spt_hash, page_action_copy);
 	if (hash_size(&dst->spt_hash) == hash_size(&src->spt_hash))
 		return true;
 	return false;
@@ -286,15 +298,17 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	struct hash_iterator i;
-	hash_first(&i, &spt->spt_hash);
-	while (hash_next(&i))
-	{
-		struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
-		if(p != NULL)
-			vm_dealloc_page(p);
-	}
-
+	// struct hash_iterator i;
+	// hash_first(&i, &spt->spt_hash);
+	// while (hash_next(&i))
+	// {
+	// 	struct page *p = hash_entry(hash_cur(&i), struct page, hash_elem);
+	// 	if(p != NULL)
+	// 		vm_dealloc_page(p);
+	// }
+	// printf("@@@@@@%d\n",spt->spt_hash.elem_cnt);
+	if (spt->spt_hash.elem_cnt > 0)
+		hash_destroy(&spt->spt_hash,page_action_kill);
 }
 // hash_elem을 사용해 page를 찾기
 uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED)
@@ -312,6 +326,45 @@ bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux
 	return a->va < b->va;
 }
 
-void page_action(struct hash_elem *e, void *aux UNUSED){
+void page_action_copy(struct hash_elem *e, void *aux UNUSED)
+{
+	// dst는 복사본 , e는 부모의 hash_elem 
+	struct supplemental_page_table *dst = aux;
+	// page는 원본 페이지
+	const struct page *src_page = hash_entry(e, struct page, hash_elem);
 	
+	// 초기화 되지않은 페이지 일 경우 
+	if(src_page->operations->type == VM_UNINIT){
+		// 페이지 할당 및 초기화 이후 spt table에 page 삽입
+		vm_alloc_page_with_initializer(page_get_type(src_page),src_page->va,src_page->writable,src_page->uninit.init,src_page->uninit.aux);
+	}
+	// 페이지가 uninit이 아닐 경우
+	else{
+		// 페이지 할당 및 초기화 이후 spt table에 page 삽입 
+		vm_alloc_page(page_get_type(src_page),src_page->va,src_page->writable);
+		struct page *dst_page = spt_find_page(dst,src_page->va);
+		if (dst_page != NULL){
+			if (vm_do_claim_page(dst_page))
+			{
+				memcpy(dst_page->frame->kva, src_page->frame->kva,PGSIZE);
+			}
+		}
+	}
+
+
+	// 1. uninit일때와 uninit이 아닐경우 구분해서 분기문 만들기  
+	// 2. uninit 아닐때  
+		// vm_alloc_page(VM_ANON,NULL,true);
+	// 3. uninit 일때  
+		// vm_alloc_page_with_initializer()
+		// page_get_type
+	// 4. 
+	// hash_insert(&dst->spt_hash, e);
+	// spt_insert_page(&dst,p);
+}
+
+void page_action_kill(struct hash_elem *e, void *aux UNUSED)
+{
+	const struct page *p = hash_entry(e, struct page, hash_elem);
+	vm_dealloc_page(p);
 }

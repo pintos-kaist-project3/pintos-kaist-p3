@@ -16,6 +16,10 @@
     "off_t.h": "c",
     "uninit.h": "c",
     "vm.h": "c",
-    "page_cache.h": "c"
+    "page_cache.h": "c",
+    "init.h": "c",
+    "thread.h": "c",
+    "stdbool.h": "c",
+    "hash.h": "c"
   }
 }
