@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "threads/mmu.h"
 
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
@@ -115,11 +116,20 @@ vm_evict_frame (void) {
  * space.*/
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
 
+	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+	frame->kva = palloc_get_page(PAL_USER);
+
+	if(frame->kva == NULL) {
+		PANIC("todo");
+	}
+
+	frame->page = NULL;
+	
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
+
 	return frame;
 }
 
@@ -132,6 +142,7 @@ vm_stack_growth (void *addr UNUSED) {
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp (struct page *page UNUSED) {
+	
 }
 
 /* Return true on success */
@@ -157,8 +168,10 @@ vm_dealloc_page (struct page *page) {
 /* Claim the page that allocate on VA. */
 bool
 vm_claim_page (void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page = (struct page *)malloc(sizeof(struct page));
 	/* TODO: Fill this function */
+	page->va = va;
+	
 
 	return vm_do_claim_page (page);
 }
@@ -167,14 +180,19 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
+	struct thread *cur = thread_current();
 
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	bool succ = pml4_set_page(cur->pml4, page, frame, true);
+	/* 추가 구현 사항: spt hash table에 추가를 해야할까.? */
 
-	return swap_in (page, frame->kva);
+	//succ = swap_in (page, frame->kva);
+	return succ;
+
 }
 
 /* Initialize new supplemental page table */
@@ -203,6 +221,8 @@ uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED) {
 
 	return hash_bytes(&page->va, sizeof page->va);
 }
+
+
 
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,void * aux UNUSED) {
 	const struct page *a = hash_entry(a_, struct page, hash_elem);
