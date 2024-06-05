@@ -857,18 +857,16 @@ lazy_load_segment(struct page *page, void *aux)
 	// f->b_file = file_open(f->b_file->inode);
 
 	/* Get a page of memory. */
-	struct frame *kpage = vm_get_frame();
-	if (kpage == NULL)
-		return false;
-
+	
+	struct frame *kpage = page->frame;
 	/* Load this page. */
 	file_seek(f->b_file, f->ofs);
-	if (file_read(f->b_file, kpage, f->read_bytes) != (int)f->read_bytes)
+	if (file_read(f->b_file, kpage->kva, f->read_bytes) != (int)f->read_bytes)
 	{
 		palloc_free_page(kpage);
 		return false;
 	}
-	memset(kpage + f->read_bytes, 0, f->zero_bytes);
+	memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
 
 	/* Add the page to the process's address space. */
 	// if (!install_page(page, kpage, page->writable))
@@ -879,6 +877,7 @@ lazy_load_segment(struct page *page, void *aux)
 	// }
 	return true;
 }
+
 
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual

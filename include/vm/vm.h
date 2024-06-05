@@ -121,7 +121,7 @@ bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 uint64_t page_hash(const struct hash_elem *e, void *aux UNUSED);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,void * aux UNUSED) ;
-struct frame *vm_get_frame (void);
+static struct frame *vm_get_frame (void);
 static void vm_stack_growth (void *addr UNUSED);
 static bool vm_handle_wp (struct page *page UNUSED);
 static bool vm_do_claim_page (struct page *page);
