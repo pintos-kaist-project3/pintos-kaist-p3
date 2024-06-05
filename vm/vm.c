@@ -111,10 +111,11 @@ bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
 	// 가상주소가 존재하는지 검사 (추가 구현 사항)
-	lock_acquire(&page->hash_lock);
+	//lock_acquire(&page->hash_lock);
 	struct hash_elem *e = hash_insert(&spt->spt_hash,&page->hash_elem);
-	lock_release(&page->hash_lock);
-	return e != NULL ? false : true;
+	//printf("[spt_insert_page]====\n");
+	//lock_release(&page->hash_lock);
+	return e == NULL ? true : false;
 }
 
 void
@@ -184,7 +185,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	if (!user){
 		return false;
 	}
-	struct page *page = spt_find_page(spt,addr);
+	void *pg_addr = pg_round_down(addr);
+	struct page *page = spt_find_page(spt,pg_addr);
 	if (page == NULL) 
 		return false;
 	if (not_present){
@@ -234,7 +236,7 @@ vm_do_claim_page (struct page *page) {
 	}
 	succ = pml4_set_page(cur->pml4, page->va, frame->kva, page->writable);
 	succ = swap_in (page, frame->kva);
-	if (!succ) vm_dealloc_page(page);
+	// if (!succ) vm_dealloc_page(page);
 	return succ;
 }
 /* Initialize new supplemental page table */

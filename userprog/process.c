@@ -857,8 +857,10 @@ lazy_load_segment(struct page *page, void *aux)
 	// f->b_file = file_open(f->b_file->inode);
 
 	/* Get a page of memory. */
-	
 	struct frame *kpage = page->frame;
+	if (kpage == NULL)
+		return false;
+
 	/* Load this page. */
 	file_seek(f->b_file, f->ofs);
 	if (file_read(f->b_file, kpage->kva, f->read_bytes) != (int)f->read_bytes)
