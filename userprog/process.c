@@ -63,7 +63,7 @@ tid_t process_create_initd(const char *file_name)
 		break;
 	}
 
-	// printf("new_filename: %s\n", new_file_name);
+	// printf("new_filen      ame: %s\n", new_file_name);
 	// printf("fn_copy: %s\n", fn_copy);
 	/* add code - gdy_pro2*/
 	/* Create a new thread to execute FILE_NAME. */
@@ -422,7 +422,7 @@ int process_exec(void *f_name)
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	_if.R.rsi = _if.rsp + sizeof(void *);
 	_if.R.rdi = count;
-	
+
 	/* add code - gdy_pro2*/
 
 	/* If load failed, quit. */
@@ -451,8 +451,8 @@ int process_wait(tid_t child_tid UNUSED)
 	}
 	sema_down(&t->sema_load);
 	int exit_s = t->exit_status;
-	remove_child_process(t); // 
-	sema_up(&t->sema_exit); // 
+	remove_child_process(t); //
+	sema_up(&t->sema_exit);	 //
 	// palloc_free_page(t);
 	// return t->exit_status;
 	return exit_s;
@@ -465,7 +465,7 @@ void process_exit(void)
 	{
 		process_close_file(fd);
 	}
-	file_close(thread_current()->running);		// add_code, 실행중인 파일도 닫기 (load에서 갱신)
+	file_close(thread_current()->running); // add_code, 실행중인 파일도 닫기 (load에서 갱신)
 	process_cleanup();
 	sema_up(&thread_current()->sema_load);
 	sema_down(&thread_current()->sema_exit); // 부모 프로세스가 ready_list에 들어갈 수 있도록 sema_up
@@ -641,8 +641,8 @@ load(const char *file_name, struct intr_frame *if_)
 			if (validate_segment(&phdr, file))
 			{
 				bool writable = (phdr.p_flags & PF_W) != 0;
-				uint64_t file_page = phdr.p_offset & ~PGMASK;
-				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
+				uint64_t file_page = phdr.p_offset & ~PGMASK; // 파일의 내부에서 읽을 위치
+				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;	  // text영역의 시작 주소
 				uint64_t page_offset = phdr.p_vaddr & PGMASK;
 				uint32_t read_bytes, zero_bytes;
 				if (phdr.p_filesz > 0)
@@ -659,6 +659,11 @@ load(const char *file_name, struct intr_frame *if_)
 					read_bytes = 0;
 					zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
 				}
+				// printf("read_bytes: %d \n", read_bytes);
+				// printf("file_page: %d \n", file_page);
+				// printf("mem_page: %d \n", mem_page);
+				// printf("-------load_segment---------\n");
+
 				if (!load_segment(file, file_page, (void *)mem_page,
 								  read_bytes, zero_bytes, writable))
 					goto done;
@@ -848,6 +853,31 @@ lazy_load_segment(struct page *page, void *aux)
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct binary_file *f = aux;
+	// f->b_file = file_open(f->b_file->inode);
+
+	/* Get a page of memory. */
+	struct frame *kpage = vm_get_frame();
+	if (kpage == NULL)
+		return false;
+
+	/* Load this page. */
+	file_seek(f->b_file, f->ofs);
+	if (file_read(f->b_file, kpage, f->read_bytes) != (int)f->read_bytes)
+	{
+		palloc_free_page(kpage);
+		return false;
+	}
+	memset(kpage + f->read_bytes, 0, f->zero_bytes);
+
+	/* Add the page to the process's address space. */
+	// if (!install_page(page, kpage, page->writable))
+	// {
+	// 	// printf("fail\n");
+	// 	palloc_free_page(kpage);
+	// 	return false;
+	// }
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -877,19 +907,32 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
+
+		void *aux = NULL;
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+		struct binary_file *b_file = (struct binary_file *)malloc(sizeof(struct binary_file));
+		b_file->read_bytes = page_read_bytes;
+		b_file->zero_bytes = page_zero_bytes;
+		b_file->ofs = ofs;
+		b_file->b_file = file;
 
+		// printf("read_bytes : %d\n", page_read_bytes);
+		// printf("zero_bytes : %d\n", page_zero_bytes);
+		// printf("ofs : %d\n", ofs);
+		// printf("------------------\n");
+
+		// aux = b_file;
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
+											writable, lazy_load_segment, b_file))
 			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
-		upage += PGSIZE;
+		ofs += page_read_bytes;
+		upage += PGSIZE;	
 	}
 	return true;
 }
@@ -906,6 +949,11 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 
+	// page 할당
+	vm_alloc_page(VM_MARKER_0 | VM_ANON, stack_bottom, true);
+	success = vm_claim_page(stack_bottom);
+	if (success)
+		if_->rsp = USER_STACK;
 	return success;
 }
 #endif /* VM */
