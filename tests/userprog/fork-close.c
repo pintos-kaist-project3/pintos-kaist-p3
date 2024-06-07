@@ -17,9 +17,10 @@ test_main (void)
   int byte_cnt;
   char *buffer;
 
-  // CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
-  handle = open ("sample.txt");
-  printf("@@@@@@@@@@ handle : %d\n",handle);
+  CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
+  // handle = open ("sample.txt");
+  // printf("@@@@@@@@@@ handle : %d\n",handle);
+
   if ((pid = fork("child"))){
     wait (pid);
 
