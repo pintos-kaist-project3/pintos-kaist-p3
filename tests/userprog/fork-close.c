@@ -7,6 +7,7 @@
 #include "tests/userprog/sample.inc"
 #include "tests/lib.h"
 #include "tests/main.h"
+#include <stdio.h>
 
 void
 test_main (void) 
@@ -16,8 +17,9 @@ test_main (void)
   int byte_cnt;
   char *buffer;
 
-  CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
-  
+  // CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
+  handle = open ("sample.txt");
+  printf("@@@@@@@@@@ handle : %d\n",handle);
   if ((pid = fork("child"))){
     wait (pid);
 

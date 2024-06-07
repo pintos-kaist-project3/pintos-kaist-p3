@@ -150,10 +150,12 @@ bool remove(const char *file)
 // 주소 값이 유저 영역에서 사용하는 주소 값인지 확인
 void check_address(void *addr)
 {
-	if (addr == NULL || !is_user_vaddr(addr) || pml4_get_page(thread_current()->pml4, addr) == NULL)
+	if (addr == NULL || !is_user_vaddr(addr))
 	{
 		exit(-1);
 	}
+	if (pml4_get_page(thread_current()->pml4, addr) == NULL)
+		exit(-1);
 }
 
 // 자식 프로세스를 생성하고 프로그램을 실행시키는 시스템 콜
