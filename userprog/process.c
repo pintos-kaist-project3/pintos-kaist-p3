@@ -953,8 +953,11 @@ setup_stack(struct intr_frame *if_)
 	// page 할당
 	vm_alloc_page(VM_MARKER_0 | VM_ANON, stack_bottom, true);
 	success = vm_claim_page(stack_bottom);
-	if (success)
+	if (success) {
 		if_->rsp = USER_STACK;
+		thread_current()->rsp = USER_STACK;
+	}
+
 	return success;
 }
 #endif /* VM */

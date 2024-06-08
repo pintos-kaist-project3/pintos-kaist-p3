@@ -73,6 +73,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	// printf("system call!\n");
 	int syscall_number = f->R.rax; // rax에 시스템 콜 넘버가 저장되어 있음
 	// printf("syscall number %d\n",syscall_number);		// 10
+	thread_current()->rsp = f->rsp;
+
 	switch (syscall_number)
 	{
 	case SYS_HALT:
