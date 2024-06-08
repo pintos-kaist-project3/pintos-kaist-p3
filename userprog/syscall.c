@@ -74,6 +74,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	int syscall_number = f->R.rax; // rax에 시스템 콜 넘버가 저장되어 있음
 	// printf("syscall number %d\n",syscall_number);		// 10
 	thread_current()->rsp = f->rsp;
+	//printf("rsp: %p\n",thread_current()->rsp);
 
 	switch (syscall_number)
 	{
@@ -214,6 +215,11 @@ int read(int fd, void *buffer, unsigned size)
 {
 	check_address(buffer);
 	struct thread *curr = thread_current();
+	struct page *p = spt_find_page(&curr->spt, buffer);
+	if(p != NULL) {
+		if(p->writable == false)
+			exit(-1);
+	}
 	lock_acquire(&filesys_lock); // 파일에 동시 접근이 일어날 수 있으므로 lock 사용
 	if (fd < 0 || fd >= MAX_FD || buffer == NULL)
 	{
