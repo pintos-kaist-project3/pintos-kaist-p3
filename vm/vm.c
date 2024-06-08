@@ -124,10 +124,10 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 					 struct page *page UNUSED)
 {
 	// 가상주소가 존재하는지 검사 (추가 구현 사항)
-	// lock_acquire(&page->hash_lock);
+	lock_acquire(&page->hash_lock);
 	struct hash_elem *e = hash_insert(&spt->spt_hash, &page->hash_elem);
 	// printf("[spt_insert_page]====\n");
-	// lock_release(&page->hash_lock);
+	lock_release(&page->hash_lock);
 	return e == NULL ? true : false;
 }
 
@@ -189,6 +189,7 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
+
 	//1. 하나 이상의 anon 페이지를 할당하여 스택 크기를 늘린다.
 	//2.  addr은 fault에서 유효한 주소가 된다.
 	//3. PGSIZE를 기준으로 내린다. 
@@ -213,81 +214,61 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	}
 	void *pg_addr = pg_round_down(addr); // 페이지 시작 주소부터
 
-	thread_current()->rsp = f->rsp;
-
-	intptr_t cur_rsp = thread_current()->rsp;
-
-	printf("22cur_rsp: %p\n",cur_rsp);
-	printf("pgaddr : %p\n", pg_addr);
 	
-	//스택 영역 존재 확인
-	if(pg_addr < cur_rsp && pg_addr >= MAX_STACK) {
-		// printf("#####addr: %p\n",pg_addr);
-		// printf("#####rsp: %p\n", thread_current()->rsp);
-		// printf("***********************\n");
 
-		size_t total_date_size = cur_rsp - (int32_t)pg_addr;
+	// printf("cur_rsp: %p\n",cur_rsp);
+	// printf("f->rsp : %p\n", f->rsp);
 
-		while (total_date_size > 0)
-		{
-			/* Do calculate how to fill this page.
-			* We will read PAGE_READ_BYTES bytes from FILE
-			* and zero the final PAGE_ZERO_BYTES bytes. */
-			
-			size_t data_size = total_date_size < PGSIZE ? total_date_size : PGSIZE;
-			size_t data_zero_bytes = PGSIZE - data_size;
-			
-			cur_rsp -= PGSIZE;
-
-			vm_alloc_page(VM_ANON,cur_rsp,true);
-
-			/* Advance. */
-			
-			// printf("total_date_size: %p\n",total_date_size);
-			// printf("cur_rsp: %p\n",cur_rsp);
-
-			// printf("current rsp: %p\n",cur_rsp);
-			// printf("current_spt_size: %d\n",spt->spt_hash.elem_cnt);
-			struct page *page = spt_find_page(spt, cur_rsp);
-
-			if (page == NULL)
-				return false;
-
-			if (not_present)
-			{
-				vm_do_claim_page(page);
-			}
-
-			total_date_size -= data_size;
-			
+	// 스택 영역 존재 확인
+	if(pg_addr >= MAX_STACK && pg_addr <= USER_STACK) {
+		
+		
+		// 스택이 증가했는지
+		if(user){
+			//printf("유저모드\n");
+			thread_current()->rsp = f->rsp;
+			if(thread_current()->rsp < f->rsp) return false;
+		} 
+		else {
+			//printf("커널모드\n");
+			//return false;
 		}
 
-		thread_current()->rsp = cur_rsp;
-	
-		return true;
-	
+		// printf("addr : %p\n",addr );
+		// printf("cur_rsp : %p\n",f->rsp);
+		intptr_t cur_rsp = thread_current()->rsp;
+		
+		// 함수 호출 
+		if(addr >= cur_rsp || addr == cur_rsp - 8) {
+			//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
+
+			// printf("-------\n");
+			// printf("(this is stack) pgaddr : %p\n", pg_addr);
+			// printf("cur_rsp : %p\n", cur_rsp);
+			// printf("total_date_size: %p\n", abs(total_date_size));
+			// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
+			// printf("-------\n");
+
+			vm_alloc_page(VM_ANON,pg_addr,true);
+		
+		}
+		
 	}
-	else {
+
+	
+	if (not_present)
+	{
+		
 		struct page *page = spt_find_page(spt, pg_addr);
 
 		if (page == NULL)
 			return false;
-		if (not_present)
-		{
-			// printf("current_spt_size: %d\n",spt->spt_hash.elem_cnt);
-			return vm_do_claim_page(page);
-		}
 		
+		// printf("current_spt_size: %d\n",spt->spt_hash.elem_cnt);
+		return vm_do_claim_page(page);
 	}
+		
 	
-	//스택 증가를 확인, 증가한 값이 최대 크기를 넘었는지 확인
-
-	//스택이 증가했을 경우 , // 스택을 증가 -> vm_stack_growth() 호출
-						   // rsp값 갱신
-	// thread_current()->rsp -> 유저스택의 rsp값이 들어있을 듯!   
-	// 스택포인터의 현재 값을 얻어야 한다.
-	// systemcall handler 또는  page_fault에 전달된 if의 rsp 멤버에서 스택포인터를 검색할 수 있다. 
-	// 커널(모드)에서 page_fault가 발생한 경우도 처리해야한다. 
 
 	// 스택 포인터를 저장하는 건 (유저 -> 커널) 전환될 때 즉, systemcall handler 또는  page_fault가 발생할 때, 
 	//page_fault로 전달된 if에서  rsp를 읽으면 유저 스택 포인터가 아닌 정의되지 않은 값을 얻을 수 있다. 
