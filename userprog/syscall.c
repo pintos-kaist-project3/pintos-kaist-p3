@@ -125,7 +125,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		close(f->R.rdi);
 		break;
 	case SYS_MMAP:
-		mmap(f->R.rdi, f->R.rsi, f->R.rdx,f->R.r10,f->R.r8);
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx,f->R.r10,f->R.r8);
 		break;
 	case SYS_MUNMAP:
 		munmap(f->R.rdi);
@@ -336,15 +336,21 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 	// printf("fd : %d\n",fd);
 	// printf("offset : %d\n",offset);
 
-	check_address(addr);
+	// check_address(addr);
 	struct thread *cur = thread_current();
 	// struct page *page = spt_find_page(&cur->spt, addr);
 	// if (page == NULL){
 	// 	return NULL;
 	// }
 	// printf("addr : %p\n",addr);
-	if (length == 0 || pg_ofs(addr) != 0 || fd == 0 || fd == 1) {
+	if (length <= 0 || length >= USER_STACK){
 		return NULL;
+	}
+	if (pg_round_down(addr) != addr || addr == NULL || is_kernel_vaddr(addr)) {
+		return NULL;
+	}
+	if (fd == 0 || fd == 1){
+		exit(-1);
 	}
 
 	struct file *f = thread_current()->fd_table[fd];

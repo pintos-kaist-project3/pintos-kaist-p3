@@ -18,7 +18,7 @@ test_main (void)
   CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
   // printf("handle : %d\n",handle);
   CHECK ((map = mmap (actual, 4096, 0, handle, 0)) != MAP_FAILED, "mmap \"sample.txt\"");
-  // printf("sample size : %ld\n",strlen(sample));
+  // printf("map : %p\n",map);
 
   /* Check that data is correct. */
   if (memcmp (actual, sample, strlen (sample)))
