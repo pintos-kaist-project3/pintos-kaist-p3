@@ -343,6 +343,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 	// 	return NULL;
 	// }
 	// printf("addr : %p\n",addr);
+
 	if (length <= 0 || length >= USER_STACK){
 		return NULL;
 	}
@@ -354,48 +355,11 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 	}
 
 	struct file *f = thread_current()->fd_table[fd];
-	int8_t *temp_addr = addr;
-	// printf("file_length: %d\n",file_length);
-	if (f == NULL){
+	struct file *re_file = file_reopen(f);
+	if (re_file == NULL){
 		return NULL;
 	}
-	
-	while (length > 0)
-	{
-		/* Do calculate how to fill this page.
-		 * We will read PAGE_READ_BYTES bytes from FILE
-		 * and zero the final PAGE_ZERO_BYTES bytes. */
-
-		void *aux = NULL;
-		size_t page_read_bytes = length < PGSIZE ? length : PGSIZE;
-		size_t page_zero_bytes = PGSIZE - page_read_bytes;
-		struct binary_file *b_file = (struct binary_file *)malloc(sizeof(struct binary_file));
-		b_file->read_bytes = page_read_bytes;
-		b_file->zero_bytes = page_zero_bytes;
-		b_file->ofs = offset;
-		b_file->b_file = f;
-
-		// printf("read_bytes : %d\n", page_read_bytes);
-		// printf("zero_bytes : %d\n", page_zero_bytes);
-		// printf("ofs : %d\n", offset);
-		// printf("------------------\n");
-
-		// aux = b_file;
-		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		if (!vm_alloc_page_with_initializer(VM_FILE, temp_addr,
-											writable, lazy_load_segment, b_file))
-			return NULL;
-
-		/* Advance. */
-		length-= page_read_bytes;
-		// zero_bytes -= page_zero_bytes;
-		offset += page_read_bytes;
-		temp_addr += PGSIZE;	
-	}
-
-	// struct page *page = spt_find_page(&cur->spt, addr);
-	// vm_claim_page(temp_addr);
-	return addr;
+	return do_mmap(addr,length,writable,re_file,offset);
 }
 
 void munmap (void *addr){
