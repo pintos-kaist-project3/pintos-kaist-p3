@@ -16,6 +16,8 @@
 #include "threads/palloc.h"
 #include "lib/string.h"
 #include "threads/mmu.h"
+#include "vm/vm.h"
+#include "userprog/process.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -34,6 +36,8 @@ int write(int fd, void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 tid_t fork (const char *thread_name, struct intr_frame *f);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 /* add function gdy_pro2*/
 
@@ -119,6 +123,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		break;
 	case SYS_CLOSE:
 		close(f->R.rdi);
+		break;
+	case SYS_MMAP:
+		mmap(f->R.rdi, f->R.rsi, f->R.rdx,f->R.r10,f->R.r8);
+		break;
+	case SYS_MUNMAP:
+		munmap(f->R.rdi);
 		break;
 	default:
 		thread_exit();
@@ -216,8 +226,10 @@ int read(int fd, void *buffer, unsigned size)
 	check_address(buffer);
 	struct thread *curr = thread_current();
 	struct page *p = spt_find_page(&curr->spt, buffer);
+
 	if(p != NULL) {
 		if(p->writable == false)
+			// 해당 페이지를 읽을 수 없다면 exit(-1)
 			exit(-1);
 	}
 	lock_acquire(&filesys_lock); // 파일에 동시 접근이 일어날 수 있으므로 lock 사용
@@ -314,6 +326,75 @@ void close(int fd)
 // 자식 프로세스 생성  
 tid_t fork (const char *thread_name, struct intr_frame *f){
 	return process_fork(thread_name,f);
+}
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
+	// printf("mmap 호출\n");
+	// printf("addr : %p\n",addr);
+	// printf("length : %d\n",length);
+	// printf("writable : %d\n",writable);
+	// printf("fd : %d\n",fd);
+	// printf("offset : %d\n",offset);
+
+	check_address(addr);
+	struct thread *cur = thread_current();
+	// struct page *page = spt_find_page(&cur->spt, addr);
+	// if (page == NULL){
+	// 	return NULL;
+	// }
+	// printf("addr : %p\n",addr);
+	if (length == 0 || pg_ofs(addr) != 0 || fd == 0 || fd == 1) {
+		return NULL;
+	}
+
+	struct file *f = thread_current()->fd_table[fd];
+	int8_t *temp_addr = addr;
+	// printf("file_length: %d\n",file_length);
+	if (f == NULL){
+		return NULL;
+	}
+	
+	while (length > 0)
+	{
+		/* Do calculate how to fill this page.
+		 * We will read PAGE_READ_BYTES bytes from FILE
+		 * and zero the final PAGE_ZERO_BYTES bytes. */
+
+		void *aux = NULL;
+		size_t page_read_bytes = length < PGSIZE ? length : PGSIZE;
+		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+		struct binary_file *b_file = (struct binary_file *)malloc(sizeof(struct binary_file));
+		b_file->read_bytes = page_read_bytes;
+		b_file->zero_bytes = page_zero_bytes;
+		b_file->ofs = offset;
+		b_file->b_file = f;
+
+		// printf("read_bytes : %d\n", page_read_bytes);
+		// printf("zero_bytes : %d\n", page_zero_bytes);
+		// printf("ofs : %d\n", offset);
+		// printf("------------------\n");
+
+		// aux = b_file;
+		/* TODO: Set up aux to pass information to the lazy_load_segment. */
+		if (!vm_alloc_page_with_initializer(VM_FILE, temp_addr,
+											writable, lazy_load_segment, b_file))
+			return NULL;
+
+		/* Advance. */
+		length-= page_read_bytes;
+		// zero_bytes -= page_zero_bytes;
+		offset += page_read_bytes;
+		temp_addr += PGSIZE;	
+	}
+
+	// struct page *page = spt_find_page(&cur->spt, addr);
+	// vm_claim_page(temp_addr);
+	return addr;
+}
+
+void munmap (void *addr){
+	// printf("munmap 호출\n");
+	// printf("addr : %p\n",addr);
 }
 
 /* add function gdy_pro2*/

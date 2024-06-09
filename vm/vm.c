@@ -189,18 +189,32 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
-
 	//1. 하나 이상의 anon 페이지를 할당하여 스택 크기를 늘린다.
 	//2.  addr은 fault에서 유효한 주소가 된다.
 	//3. PGSIZE를 기준으로 내린다. 
 	//4. 2^20 (1MB) 크기 제한을 조정
-	
+	intptr_t cur_rsp = thread_current()->rsp;
+		
+		// 함수 호출 
+	if(addr >= cur_rsp || addr == cur_rsp - 8) {
+		//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
+
+		// printf("-------\n");
+		// printf("(this is stack) pgaddr : %p\n", pg_addr);
+		// printf("cur_rsp : %p\n", cur_rsp);
+		// printf("total_date_size: %p\n", abs(total_date_size));
+		// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
+		// printf("-------\n");
+
+		vm_alloc_page(VM_ANON,pg_round_down(addr),true);
+	}
 }
 
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp(struct page *page UNUSED)
 {
+	
 }
 
 /* Return true on success */
@@ -228,30 +242,11 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 			//printf("유저모드\n");
 			thread_current()->rsp = f->rsp;
 			if(thread_current()->rsp < f->rsp) return false;
-		} 
-		else {
-			//printf("커널모드\n");
-			//return false;
 		}
 
 		// printf("addr : %p\n",addr );
 		// printf("cur_rsp : %p\n",f->rsp);
-		intptr_t cur_rsp = thread_current()->rsp;
-		
-		// 함수 호출 
-		if(addr >= cur_rsp || addr == cur_rsp - 8) {
-			//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
-
-			// printf("-------\n");
-			// printf("(this is stack) pgaddr : %p\n", pg_addr);
-			// printf("cur_rsp : %p\n", cur_rsp);
-			// printf("total_date_size: %p\n", abs(total_date_size));
-			// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
-			// printf("-------\n");
-
-			vm_alloc_page(VM_ANON,pg_addr,true);
-		
-		}
+		vm_stack_growth(addr);
 		
 	}
 
@@ -317,6 +312,8 @@ vm_do_claim_page(struct page *page)
 		return false;
 	}
 	succ = pml4_set_page(cur->pml4, page->va, frame->kva, page->writable);
+	// printf("kva : %p\n",frame->kva);
+	// printf("va : %p\n",page->va);
 	succ = swap_in(page, frame->kva);
 	if (!succ)
 		vm_dealloc_page(page);

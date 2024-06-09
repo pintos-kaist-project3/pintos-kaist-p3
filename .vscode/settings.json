@@ -27,6 +27,8 @@
     "istream": "c",
     "limits": "c",
     "sstream": "c",
-    "streambuf": "c"
+    "streambuf": "c",
+    "types.h": "c",
+    "inspect.h": "c"
   }
 }
