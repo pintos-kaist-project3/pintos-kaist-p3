@@ -194,6 +194,25 @@ vm_stack_growth(void *addr UNUSED)
 	//2.  addr은 fault에서 유효한 주소가 된다.
 	//3. PGSIZE를 기준으로 내린다. 
 	//4. 2^20 (1MB) 크기 제한을 조정
+
+	// printf("cur_rsp : %p\n",f->rsp);
+	intptr_t cur_rsp = thread_current()->rsp;
+	
+	
+	// 함수 호출 
+	if(addr >= cur_rsp || addr == cur_rsp - 8) {
+		//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
+
+		// printf("-------\n");
+		// printf("(this is stack) pgaddr : %p\n", pg_addr);
+		// printf("cur_rsp : %p\n", cur_rsp);
+		// printf("total_date_size: %p\n", abs(total_date_size));
+		// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
+		// printf("-------\n");
+
+		vm_alloc_page(VM_ANON,pg_round_down(addr),true);
+	
+	}
 	
 }
 
@@ -222,36 +241,15 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	// 스택 영역 존재 확인
 	if(pg_addr >= MAX_STACK && pg_addr <= USER_STACK) {
 		
-		
 		// 스택이 증가했는지
 		if(user){
 			//printf("유저모드\n");
 			thread_current()->rsp = f->rsp;
 			if(thread_current()->rsp < f->rsp) return false;
 		} 
-		else {
-			//printf("커널모드\n");
-			//return false;
-		}
 
 		// printf("addr : %p\n",addr );
-		// printf("cur_rsp : %p\n",f->rsp);
-		intptr_t cur_rsp = thread_current()->rsp;
-		
-		// 함수 호출 
-		if(addr >= cur_rsp || addr == cur_rsp - 8) {
-			//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
-
-			// printf("-------\n");
-			// printf("(this is stack) pgaddr : %p\n", pg_addr);
-			// printf("cur_rsp : %p\n", cur_rsp);
-			// printf("total_date_size: %p\n", abs(total_date_size));
-			// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
-			// printf("-------\n");
-
-			vm_alloc_page(VM_ANON,pg_addr,true);
-		
-		}
+		vm_stack_growth(addr);
 		
 	}
 
