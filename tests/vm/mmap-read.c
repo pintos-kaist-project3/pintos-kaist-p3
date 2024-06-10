@@ -5,6 +5,7 @@
 #include "tests/vm/sample.inc"
 #include "tests/lib.h"
 #include "tests/main.h"
+#include <stdio.h>
 
 void
 test_main (void)
@@ -15,12 +16,14 @@ test_main (void)
   size_t i;
 
   CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
+  // printf("handle : %d\n",handle);
   CHECK ((map = mmap (actual, 4096, 0, handle, 0)) != MAP_FAILED, "mmap \"sample.txt\"");
+  // printf("map : %p\n",map);
 
   /* Check that data is correct. */
   if (memcmp (actual, sample, strlen (sample)))
     fail ("read of mmap'd file reported bad data");
-
+  // printf("actual : %s\n",actual);
   /* Verify that data is followed by zeros. */
   for (i = strlen (sample); i < 4096; i++)
     if (actual[i] != 0)

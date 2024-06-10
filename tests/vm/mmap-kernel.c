@@ -21,6 +21,8 @@ test_main (void)
          "try to mmap over kernel 1");
 
   kernel = (void *) 0x8004000000 - 0x1000;
+//   void *map = mmap (kernel, -0x8004000000 + 0x1000, 0, handle, 0);
+//   printf("map : %p\n",map);
   CHECK (mmap (kernel, -0x8004000000 + 0x1000, 0, handle, 0) == MAP_FAILED,
          "try to mmap over kernel 2");
 
