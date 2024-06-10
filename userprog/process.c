@@ -272,7 +272,7 @@ __do_fork(void *aux)
 	process_activate(current);
 #ifdef VM
 	supplemental_page_table_init(&current->spt);
-	//current->spt.spt_hash.aux =  current.
+	// current->spt.spt_hash.aux =  current.
 	if (!supplemental_page_table_copy(&current->spt, &parent->spt))
 		goto error;
 #else
@@ -847,8 +847,7 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
-lazy_load_segment(struct page *page, void *aux)
+bool lazy_load_segment(struct page *page, void *aux)
 {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
@@ -858,17 +857,33 @@ lazy_load_segment(struct page *page, void *aux)
 
 	/* Get a page of memory. */
 	struct frame *kpage = page->frame;
+	// printf("kpage_kva : %p\n", kpage->kva);
 	if (kpage == NULL)
 		return false;
 
 	/* Load this page. */
-	file_seek(f->b_file, f->ofs);
-	if (file_read(f->b_file, kpage->kva, f->read_bytes) != (int)f->read_bytes)
+	// ANON 타입일 경우 
+	if (page->operations->type == VM_ANON)
 	{
-		palloc_free_page(kpage);
-		return false;
+		file_seek(f->b_file, f->ofs);
+		if (file_read(f->b_file, kpage->kva, f->read_bytes) != (int)f->read_bytes)
+		{
+			palloc_free_page(kpage);
+			return false;
+		}
+		memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
 	}
-	memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
+	// FILE 타입일 경우  
+	else if (page->operations->type == VM_FILE){
+		file_seek(f->b_file, f->ofs);
+		int file_length = file_read(f->b_file, kpage->kva, f->read_bytes);
+		if(file_length == 0){
+			palloc_free_page(kpage);
+			return false;
+		}
+		memset(kpage->kva + file_length, 0, f->read_bytes-file_length);
+		// memcpy(kpage->kva + f->read_bytes,)
+	}
 
 	/* Add the page to the process's address space. */
 	// if (!install_page(page, kpage, page->writable))
@@ -879,7 +894,6 @@ lazy_load_segment(struct page *page, void *aux)
 	// }
 	return true;
 }
-
 
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
@@ -933,7 +947,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		ofs += page_read_bytes;
-		upage += PGSIZE;	
+		upage += PGSIZE;
 	}
 	return true;
 }
@@ -953,9 +967,10 @@ setup_stack(struct intr_frame *if_)
 	// page 할당
 	vm_alloc_page(VM_MARKER_0 | VM_ANON, stack_bottom, true);
 	success = vm_claim_page(stack_bottom);
-	if (success) {
+	if (success)
+	{
 		if_->rsp = USER_STACK;
-		thread_current()->rsp = USER_STACK;
+		thread_current()->rsp = USER_STACK; // rsp값을 user_stack으로 초기화
 	}
 
 	return success;

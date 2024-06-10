@@ -124,10 +124,12 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 					 struct page *page UNUSED)
 {
 	// 가상주소가 존재하는지 검사 (추가 구현 사항)
+
 	lock_acquire(&page->hash_lock);
 	struct hash_elem *e = hash_insert(&spt->spt_hash, &page->hash_elem);
 	// printf("[spt_insert_page]====\n");
 	lock_release(&page->hash_lock);
+
 	return e == NULL ? true : false;
 }
 
@@ -189,17 +191,13 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
-
 	//1. 하나 이상의 anon 페이지를 할당하여 스택 크기를 늘린다.
 	//2.  addr은 fault에서 유효한 주소가 된다.
 	//3. PGSIZE를 기준으로 내린다. 
 	//4. 2^20 (1MB) 크기 제한을 조정
-
-	// printf("cur_rsp : %p\n",f->rsp);
 	intptr_t cur_rsp = thread_current()->rsp;
-	
-	
-	// 함수 호출 
+		
+		// 함수 호출 
 	if(addr >= cur_rsp || addr == cur_rsp - 8) {
 		//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
 
@@ -211,15 +209,14 @@ vm_stack_growth(void *addr UNUSED)
 		// printf("-------\n");
 
 		vm_alloc_page(VM_ANON,pg_round_down(addr),true);
-	
 	}
-	
 }
 
 /* Handle the fault on write_protected page */
 static bool
 vm_handle_wp(struct page *page UNUSED)
 {
+	
 }
 
 /* Return true on success */
@@ -227,10 +224,11 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 						 bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 {
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-	if (!is_user_vaddr(addr))
+	if (!is_user_vaddr(addr))	// 유저 address 영역인지 검사 (bool user는 유저모드이면 true, 커널모드이면 false) // modify
 	{
 		return false;
 	}
+	// page fault가 일어난 페이지 주소 pg_addr
 	void *pg_addr = pg_round_down(addr); // 페이지 시작 주소부터
 
 	
@@ -241,14 +239,16 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	// 스택 영역 존재 확인
 	if(pg_addr >= MAX_STACK && pg_addr <= USER_STACK) {
 		
+		
 		// 스택이 증가했는지
 		if(user){
 			//printf("유저모드\n");
 			thread_current()->rsp = f->rsp;
 			if(thread_current()->rsp < f->rsp) return false;
-		} 
+		}
 
 		// printf("addr : %p\n",addr );
+		// printf("cur_rsp : %p\n",f->rsp);
 		vm_stack_growth(addr);
 		
 	}
@@ -315,6 +315,8 @@ vm_do_claim_page(struct page *page)
 		return false;
 	}
 	succ = pml4_set_page(cur->pml4, page->va, frame->kva, page->writable);
+	// printf("kva : %p\n",frame->kva);
+	// printf("va : %p\n",page->va);
 	succ = swap_in(page, frame->kva);
 	if (!succ)
 		vm_dealloc_page(page);
@@ -419,8 +421,7 @@ void page_action_copy(struct hash_elem *e, void *aux UNUSED)
 	// 2. uninit 아닐때
 	// vm_alloc_page(VM_ANON,NULL,true);
 	// 3. uninit 일때
-	// vm_alloc_page_with_initializer()
-	// page_get_type
+	// vm_alloc_page_with_initializer(page_get_type(src_page), src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux);
 	
 	// hash_insert(&dst->spt_hash, e);
 	// spt_insert_page(&dst,p);

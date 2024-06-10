@@ -14,6 +14,7 @@ struct thread *get_child_process (int tid);
 int process_add_file(struct file *f);
 struct file *process_get_file(int fd);
 void process_close_file(int fd);
+bool lazy_load_segment(struct page *page, void *aux);
 
 struct binary_file {
     struct file *b_file;
