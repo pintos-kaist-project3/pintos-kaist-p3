@@ -3,6 +3,7 @@
 #include "vm/vm.h"
 #include "userprog/process.h"
 #include "threads/vaddr.h"
+#include "threads/mmu.h"
 
 static bool file_backed_swap_in(struct page *page, void *kva);
 static bool file_backed_swap_out(struct page *page);
@@ -51,6 +52,22 @@ file_backed_destroy(struct page *page)
 {
 	struct file_page *file_page UNUSED = &page->file;
 
+	void *save_addr = page->st_addr;
+	void *temp_addr = save_addr;
+	if (!pml4_is_dirty(thread_current()->pml4, temp_addr))
+	{
+		pml4_clear_page(thread_current()->pml4, temp_addr);
+	}
+	else
+	{
+		struct binary_file *f = page->uninit.aux;
+		struct frame *kpage = page->frame;
+		file_write_at(f->b_file, kpage->kva, PGSIZE, f->ofs);
+		// pml4_set_dirty(thread_current()->pml4, temp_addr, 0);
+		// vm_dealloc_page(p);
+		// destroy(p);
+		// printf("bytes_written : %d\n",bytes_written);
+	}
 }
 
 /* Do the mmap */
@@ -91,7 +108,7 @@ do_mmap(void *addr, size_t length, int writable,
 		// zero_bytes -= page_zero_bytes;
 		offset += page_read_bytes;
 		struct supplemental_page_table *spt = &thread_current()->spt;
-		struct page *p= spt_find_page(spt,temp_addr);
+		struct page *p = spt_find_page(spt, temp_addr);
 		p->st_addr = addr;
 		temp_addr += PGSIZE;
 	}

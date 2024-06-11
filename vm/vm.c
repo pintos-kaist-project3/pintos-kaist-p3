@@ -253,8 +253,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 		vm_stack_growth(addr);
 		
 	}
-
-	
 	if (not_present)
 	{
 		
