@@ -53,10 +53,10 @@ file_backed_destroy(struct page *page)
 	struct file_page *file_page UNUSED = &page->file;
 
 	void *save_addr = page->st_addr;
-	void *temp_addr = save_addr;
-	if (!pml4_is_dirty(thread_current()->pml4, temp_addr))
+	// void *temp_addr = save_addr;
+	if (!pml4_is_dirty(thread_current()->pml4, save_addr))
 	{
-		pml4_clear_page(thread_current()->pml4, temp_addr);
+		pml4_clear_page(thread_current()->pml4, save_addr);
 	}
 	else
 	{
