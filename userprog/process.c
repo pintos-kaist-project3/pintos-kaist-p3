@@ -862,7 +862,7 @@ bool lazy_load_segment(struct page *page, void *aux)
 		return false;
 
 	/* Load this page. */
-	// ANON 타입일 경우 
+	// ANON 타입일 경우
 	if (page->operations->type == VM_ANON)
 	{
 		file_seek(f->b_file, f->ofs);
@@ -873,15 +873,17 @@ bool lazy_load_segment(struct page *page, void *aux)
 		}
 		memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
 	}
-	// FILE 타입일 경우  
-	else if (page->operations->type == VM_FILE){
+	// FILE 타입일 경우
+	else if (page->operations->type == VM_FILE)
+	{
 		file_seek(f->b_file, f->ofs);
 		int file_length = file_read(f->b_file, kpage->kva, f->read_bytes);
-		if(file_length == 0){
-			palloc_free_page(kpage);
-			return false;
+		if (file_length == 0)
+		{
+			// palloc_free_page(kpage);
+			exit(-1);
 		}
-		memset(kpage->kva + file_length, 0, f->read_bytes-file_length);
+		memset(kpage->kva + file_length, 0, f->read_bytes - file_length);
 		// memcpy(kpage->kva + f->read_bytes,)
 	}
 

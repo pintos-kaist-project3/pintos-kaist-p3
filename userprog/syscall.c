@@ -372,21 +372,12 @@ void munmap (void *addr){
 	if (p ==NULL){
 		return;
 	}
-	void *save_addr = p->st_addr;
-	while (p->st_addr != save_addr){
-		if (!pml4_is_dirty(thread_current()->pml4,save_addr)){
-			free(p);
-		} 
-		else{
-			struct binary_file *f = p->uninit.aux;
-			struct frame *kpage = p->frame;
-			int bytes_written = file_write_at(f->b_file,kpage->kva,PGSIZE,f->ofs);
-			// vm_dealloc_page(p);
-			destroy(p);
-			// printf("bytes_written : %d\n",bytes_written);
-		}
-		save_addr += PGSIZE;
-		p = spt_find_page(spt,save_addr);
+	// void *save_addr = p->st_addr;
+	// void *temp_addr = save_addr;
+	while (p!=NULL){
+		destroy(p);
+		addr += PGSIZE;
+		p = spt_find_page(spt,addr);
 	}
 }
 
