@@ -92,6 +92,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		}
 		page->writable = writable;
 		page->frame = NULL;
+		page->st_addr = 0;
 		lock_init(&page->hash_lock);
 		return spt_insert_page(spt, page);
 	}
@@ -252,8 +253,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 		vm_stack_growth(addr);
 		
 	}
-
-	
 	if (not_present)
 	{
 		
