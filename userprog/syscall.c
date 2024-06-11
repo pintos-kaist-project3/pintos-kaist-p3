@@ -360,6 +360,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 	if (re_file == NULL){
 		return NULL;
 	}
+	
 	return do_mmap(addr,length,writable,re_file,offset);
 }
 
