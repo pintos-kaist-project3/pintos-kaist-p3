@@ -35,7 +35,7 @@ static bool
 file_backed_swap_in(struct page *page, void *kva)
 {
 	struct file_page *file_page UNUSED = &page->file;
-	return true;
+	// return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
@@ -50,6 +50,7 @@ static void
 file_backed_destroy(struct page *page)
 {
 	struct file_page *file_page UNUSED = &page->file;
+
 }
 
 /* Do the mmap */
@@ -89,6 +90,9 @@ do_mmap(void *addr, size_t length, int writable,
 		length -= page_read_bytes;
 		// zero_bytes -= page_zero_bytes;
 		offset += page_read_bytes;
+		struct supplemental_page_table *spt = &thread_current()->spt;
+		struct page *p= spt_find_page(spt,temp_addr);
+		p->st_addr = addr;
 		temp_addr += PGSIZE;
 	}
 

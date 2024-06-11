@@ -52,8 +52,10 @@ struct page {
 	struct hash_elem hash_elem;
 	struct lock hash_lock;
 	bool writable;
+	int fd;
 	/* 상용하는 커널 가상 주소*/
 	void *kva;
+	void *st_addr;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */

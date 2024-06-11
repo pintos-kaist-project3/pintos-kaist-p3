@@ -283,6 +283,7 @@ int write(int fd, void *buffer, unsigned size)
 	}
 
 	int bytes_written = file_write(f, buffer, size);
+	pml4_set_dirty (thread_current()->pml4,buffer, 1); 
 	lock_release(&filesys_lock);
 	return bytes_written;
 }
@@ -344,7 +345,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 	// }
 	// printf("addr : %p\n",addr);
 
-	if (length <= 0 || length >= USER_STACK){
+	if ((int)length <= 0 || offset != pg_round_down(offset)){
 		return NULL;
 	}
 	if (pg_round_down(addr) != addr || addr == NULL || is_kernel_vaddr(addr)) {
@@ -365,6 +366,28 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 void munmap (void *addr){
 	// printf("munmap 호출\n");
 	// printf("addr : %p\n",addr);
+	
+	struct supplemental_page_table *spt = &thread_current()->spt;
+	struct page *p= spt_find_page(spt,addr);
+	if (p ==NULL){
+		return;
+	}
+	void *save_addr = p->st_addr;
+	while (p->st_addr != save_addr){
+		if (!pml4_is_dirty(thread_current()->pml4,save_addr)){
+			free(p);
+		} 
+		else{
+			struct binary_file *f = p->uninit.aux;
+			struct frame *kpage = p->frame;
+			int bytes_written = file_write_at(f->b_file,kpage->kva,PGSIZE,f->ofs);
+			// vm_dealloc_page(p);
+			destroy(p);
+			// printf("bytes_written : %d\n",bytes_written);
+		}
+		save_addr += PGSIZE;
+		p = spt_find_page(spt,save_addr);
+	}
 }
 
 /* add function gdy_pro2*/
