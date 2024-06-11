@@ -873,6 +873,7 @@ bool lazy_load_segment(struct page *page, void *aux)
 		}
 		memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
 	}
+	
 	// FILE 타입일 경우
 	else if (page->operations->type == VM_FILE)
 	{

@@ -366,19 +366,9 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
 void munmap (void *addr){
 	// printf("munmap 호출\n");
 	// printf("addr : %p\n",addr);
+
+	do_munmap(addr);
 	
-	struct supplemental_page_table *spt = &thread_current()->spt;
-	struct page *p= spt_find_page(spt,addr);
-	if (p ==NULL){
-		return;
-	}
-	// void *save_addr = p->st_addr;
-	// void *temp_addr = save_addr;
-	while (p!=NULL){
-		destroy(p);
-		addr += PGSIZE;
-		p = spt_find_page(spt,addr);
-	}
 }
 
 /* add function gdy_pro2*/
