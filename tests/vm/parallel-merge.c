@@ -19,6 +19,7 @@ size_t histogram[256];
 
 /* Initialize buf1 with random data,
    then count the number of instances of each value within it. */
+
 static void
 init (void)
 {
