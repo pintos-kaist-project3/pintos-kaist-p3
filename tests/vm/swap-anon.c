@@ -31,7 +31,6 @@ void test_main(void)
     {
         if (!(i % 512))
             msg("write sparsely over page %zu", i);
-        printf("i: %ld\n", i);
         mem = (big_chunks + (i * PAGE_SIZE));
         *mem = (char)i;
     }
@@ -39,7 +38,7 @@ void test_main(void)
     for (i = 0; i < PAGE_COUNT; i++)
     {
 
-        printf("outer i: %ld\n", i);
+        // printf("outer i: %ld\n", i);
 
         mem = (big_chunks + (i * PAGE_SIZE));
         if ((char)i != *mem)

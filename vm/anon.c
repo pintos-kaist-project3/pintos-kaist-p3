@@ -21,14 +21,13 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 struct bitmap *swap_table;
-int bitmap_idx;
+
 /* Initialize the data for anonymous pages */
 void vm_anon_init(void)
 {
 	/* TODO: Set up the swap_disk. */
 	swap_disk = disk_get(1, 1);
 	swap_table = bitmap_create(disk_size(swap_disk));
-	bitmap_idx = 0;
 }
 
 /* Initialize the file mapping */
@@ -49,30 +48,23 @@ static bool
 anon_swap_in(struct page *page, void *kva)
 {
 
-	printf("in_kva : %p\n", kva);
+	// printf("in_kva : %p\n", kva);
 	struct anon_page *anon_page = &page->anon;
 	if (kva == NULL || page == NULL)
 	{
-		// printf("0\n");
-
 		return false;
 	}
-	// printf("1\n");
+
 	int idx = page->bitmap_idx;
-	printf("swap in, page->bitmap_idx : %d\n", page->bitmap_idx);
+	// printf("swap in, page->bitmap_idx : %d\n", page->bitmap_idx);
 
 	for (int i = 0; i < PGSIZE; i += DISK_SECTOR_SIZE)
 	{
 		bitmap_set(swap_table, idx, 0);
-		// int capacity = disk_size(swap_disk);
-		// printf("capacity : %d\n", capacity);
-		// printf("4\n");
-
 		disk_read(swap_disk, idx, kva);
 		idx++;
 		kva += DISK_SECTOR_SIZE;
 	}
-	// printf("3\n");
 
 	return true;
 }
@@ -84,24 +76,24 @@ anon_swap_out(struct page *page)
 	struct anon_pxage *anon_page = &page->anon;
 
 	int sector_num = 0;
-	page->bitmap_idx = bitmap_idx;
-
-	printf("page->bitmap_idx : %d\n", page->bitmap_idx);
+	page->bitmap_idx = bitmap_scan_and_flip(swap_table, 0, 8, 0);
+	// printf("page->bitmap_idx : %d\n", page->bitmap_idx);
 	void *kva = page->frame->kva;
+	int idx = page->bitmap_idx;
 
-	printf("swap out start kva : %p\n", kva);
+	// printf("swap out start kva : %p\n", kva);
+
 	for (int i = 0; i < PGSIZE; i += DISK_SECTOR_SIZE)
 	{
-		bitmap_set(swap_table, bitmap_idx, 1);
-		// int capacity = disk_size(swap_disk);
-		// printf("capacity : %d\n", capacity);
-		disk_write(swap_disk, bitmap_idx, kva);
-		bitmap_idx++;
+		bitmap_set(swap_table, idx, 1);
+		disk_write(swap_disk, idx, kva);
+		idx++;
 		kva += DISK_SECTOR_SIZE;
 	}
-	printf("out_kva : %p\n", kva);
 
-	// pml4_clear_page(&thread_current()->pml4, page->va);
+	// printf("out_kva : %p\n", kva);
+
+	pml4_clear_page(thread_current()->pml4, page->va);
 
 	return true;
 }
