@@ -3,8 +3,9 @@
 #include "vm/vm.h"
 struct page;
 enum vm_type;
-
+struct list swap_list;
 struct anon_page {
+
 };
 
 void vm_anon_init (void);

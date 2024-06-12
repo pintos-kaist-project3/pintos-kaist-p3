@@ -863,19 +863,22 @@ bool lazy_load_segment(struct page *page, void *aux)
 
 	/* Load this page. */
 	// ANON 타입일 경우
-	if (page->operations->type == VM_ANON)
+	// printf("하이\n");
+	if (VM_TYPE(page->operations->type) == VM_ANON)
 	{
+		// printf("하이\n");
 		file_seek(f->b_file, f->ofs);
 		if (file_read(f->b_file, kpage->kva, f->read_bytes) != (int)f->read_bytes)
 		{
+
 			palloc_free_page(kpage);
 			return false;
 		}
 		memset(kpage->kva + f->read_bytes, 0, f->zero_bytes);
 	}
-	
+
 	// FILE 타입일 경우
-	else if (page->operations->type == VM_FILE)
+	else if (VM_TYPE(page->operations->type) == VM_FILE)
 	{
 		file_seek(f->b_file, f->ofs);
 		int file_length = file_read(f->b_file, kpage->kva, f->read_bytes);

@@ -39,7 +39,7 @@ bool anon_initializer(struct page *page, enum vm_type type, void *kva)
 	page->operations = &anon_ops;
 
 	struct anon_page *anon_page = &page->anon;
-	list_push_back(&frame_table, &page->frame->frame_elem);
+	// list_push_back(&frame_table, &page->frame->frame_elem);
 	struct frame *f = list_entry(list_begin(&frame_table), struct frame, frame_elem);
 	// printf("type: %d\n",f->page->operations->type);
 }

@@ -154,10 +154,6 @@ vm_get_victim(void)
 	struct list_elem *frame_elem = list_begin(&frame_table);
 	while (frame_elem != list_end(&frame_table))
 	{
-		if (list_empty(&frame_table))
-		{
-			return NULL;
-		}
 		struct frame *victim = list_entry(frame_elem, struct frame, frame_elem);
 		if (victim->page->operations->type != VM_UNINIT)
 		{
@@ -357,6 +353,7 @@ vm_do_claim_page(struct page *page)
 	// printf("kva : %p\n",frame->kva);
 	// printf("va : %p\n",page->va);
 	succ = swap_in(page, frame->kva);
+	list_push_back(&frame_table, &frame->frame_elem);
 	// printf("do_kva : %p\n", frame->kva);
 	if (!succ)
 		vm_dealloc_page(page);
