@@ -9,9 +9,9 @@
 #include "threads/synch.h"
 #include "userprog/process.h"
 #include "lib/string.h"
+#include "vm/anon.h"
 
 #define MAX_STACK (USER_STACK - (1 << 20))
-
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -19,6 +19,7 @@ void vm_init(void)
 {
 	vm_anon_init();
 	vm_file_init();
+	list_init(&frame_table);
 #ifdef EFILESYS /* For project 4 */
 	pagecache_init();
 #endif
@@ -26,8 +27,6 @@ void vm_init(void)
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
 }
-
-
 
 /* Get the type of the page. This function is useful if you want to know the
  * type of the page after it will be initialized.
@@ -94,6 +93,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		page->frame = NULL;
 		page->st_addr = 0;
 		lock_init(&page->hash_lock);
+		page->cur_thread = thread_current();
 		return spt_insert_page(spt, page);
 	}
 err:
@@ -105,6 +105,7 @@ err:
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 {
+
 	struct page *page = (struct page *)malloc(sizeof(struct page));
 	struct hash_elem *e;
 
@@ -139,14 +140,34 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 	vm_dealloc_page(page);
 }
 
-/* Get the struct frame, that will be evicted. */
+/* Get the struct frame, that
+will be evicted. */
 static struct frame *
 vm_get_victim(void)
 {
-	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
-
-	return victim;
+	if (list_empty(&frame_table))
+	{
+		printf("들어오지마\n");
+		return NULL;
+	}
+	struct list_elem *frame_elem = list_begin(&frame_table);
+	while (frame_elem != list_end(&frame_table))
+	{
+		if (list_empty(&frame_table))
+		{
+			return NULL;
+		}
+		struct frame *victim = list_entry(frame_elem, struct frame, frame_elem);
+		if (victim->page->operations->type != VM_UNINIT)
+		{
+			list_pop_front(&frame_table);
+			printf("들오와야겠지..??\n");
+			return victim;
+		}
+		frame_elem = frame_elem->next;
+	}
+	return NULL;
 }
 
 /* Evict one page and return the corresponding frame.
@@ -155,9 +176,29 @@ static struct frame *
 vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
+	if (victim == NULL)
+	{
+		printf("들어오면 안돼!!\n");
+		return NULL;
+	}
 	/* TODO: swap out the victim and return the evicted frame. */
+	bool success = swap_out(victim->page);
 
-	return NULL;
+	if (!success)
+		PANIC("엘렐레");
+
+	return victim;
+	// if (success)
+	// {
+	// 	struct frame *copy_frame = (struct frame *)malloc(sizeof(struct frame));
+	// 	memcpy(copy_frame, victim, sizeof(struct frame));
+	// 	// pml4_clear_page(&victim->page->cur_thread->pml4, victim->page->va);
+	// 	return copy_frame;
+	// }
+	// else
+	// {
+	// 	return NULL;
+	// }
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -176,7 +217,10 @@ vm_get_frame(void)
 
 	if (frame->kva == NULL)
 	{
-		PANIC("todo");
+		// swap out이 발생 해야함
+		struct frame *evict_frame = vm_evict_frame();
+		memcpy(frame, evict_frame, sizeof(struct frame));
+		frame->kva = pg_round_down(frame->kva);
 	}
 
 	frame->page = NULL;
@@ -191,15 +235,16 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
-	//1. 하나 이상의 anon 페이지를 할당하여 스택 크기를 늘린다.
-	//2.  addr은 fault에서 유효한 주소가 된다.
-	//3. PGSIZE를 기준으로 내린다. 
-	//4. 2^20 (1MB) 크기 제한을 조정
+	// 1. 하나 이상의 anon 페이지를 할당하여 스택 크기를 늘린다.
+	// 2.  addr은 fault에서 유효한 주소가 된다.
+	// 3. PGSIZE를 기준으로 내린다.
+	// 4. 2^20 (1MB) 크기 제한을 조정
 	intptr_t cur_rsp = thread_current()->rsp;
-		
-		// 함수 호출 
-	if(addr >= cur_rsp || addr == cur_rsp - 8) {
-		//size_t total_date_size = cur_rsp - (int32_t)pg_addr;
+
+	// 함수 호출
+	if (addr >= cur_rsp || addr == cur_rsp - 8)
+	{
+		// size_t total_date_size = cur_rsp - (int32_t)pg_addr;
 
 		// printf("-------\n");
 		// printf("(this is stack) pgaddr : %p\n", pg_addr);
@@ -208,7 +253,7 @@ vm_stack_growth(void *addr UNUSED)
 		// printf("pg_round_down(cur_rsp): %p\n",pg_round_down(cur_rsp));
 		// printf("-------\n");
 
-		vm_alloc_page(VM_ANON,pg_round_down(addr),true);
+		vm_alloc_page(VM_ANON, pg_round_down(addr), true);
 	}
 }
 
@@ -216,7 +261,6 @@ vm_stack_growth(void *addr UNUSED)
 static bool
 vm_handle_wp(struct page *page UNUSED)
 {
-	
 }
 
 /* Return true on success */
@@ -224,51 +268,47 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 						 bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 {
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-	if (!is_user_vaddr(addr))	// 유저 address 영역인지 검사 (bool user는 유저모드이면 true, 커널모드이면 false) // modify
+	if (!is_user_vaddr(addr)) // 유저 address 영역인지 검사 (bool user는 유저모드이면 true, 커널모드이면 false) // modify
 	{
 		return false;
 	}
 	// page fault가 일어난 페이지 주소 pg_addr
 	void *pg_addr = pg_round_down(addr); // 페이지 시작 주소부터
 
-	
-
 	// printf("cur_rsp: %p\n",cur_rsp);
 	// printf("f->rsp : %p\n", f->rsp);
 
 	// 스택 영역 존재 확인
-	if(pg_addr >= MAX_STACK && pg_addr <= USER_STACK) {
-		
-		
+	if (pg_addr >= MAX_STACK && pg_addr <= USER_STACK)
+	{
+
 		// 스택이 증가했는지
-		if(user){
-			//printf("유저모드\n");
+		if (user)
+		{
+			// printf("유저모드\n");
 			thread_current()->rsp = f->rsp;
-			if(thread_current()->rsp < f->rsp) return false;
+			if (thread_current()->rsp < f->rsp)
+				return false;
 		}
 
 		// printf("addr : %p\n",addr );
 		// printf("cur_rsp : %p\n",f->rsp);
 		vm_stack_growth(addr);
-		
 	}
 	if (not_present)
 	{
-		
+
 		struct page *page = spt_find_page(spt, pg_addr);
 
 		if (page == NULL)
 			return false;
-		
+
 		// printf("current_spt_size: %d\n",spt->spt_hash.elem_cnt);
 		return vm_do_claim_page(page);
 	}
-		
-	
 
-	// 스택 포인터를 저장하는 건 (유저 -> 커널) 전환될 때 즉, systemcall handler 또는  page_fault가 발생할 때, 
-	//page_fault로 전달된 if에서  rsp를 읽으면 유저 스택 포인터가 아닌 정의되지 않은 값을 얻을 수 있다. 
-
+	// 스택 포인터를 저장하는 건 (유저 -> 커널) 전환될 때 즉, systemcall handler 또는  page_fault가 발생할 때,
+	// page_fault로 전달된 if에서  rsp를 읽으면 유저 스택 포인터가 아닌 정의되지 않은 값을 얻을 수 있다.
 
 	return false;
 }
@@ -300,6 +340,7 @@ static bool
 vm_do_claim_page(struct page *page)
 {
 	struct frame *frame = vm_get_frame();
+	// printf("frame kva : %p\n", frame->kva);
 	struct thread *cur = thread_current();
 
 	/* Set links */
@@ -316,6 +357,7 @@ vm_do_claim_page(struct page *page)
 	// printf("kva : %p\n",frame->kva);
 	// printf("va : %p\n",page->va);
 	succ = swap_in(page, frame->kva);
+	// printf("do_kva : %p\n", frame->kva);
 	if (!succ)
 		vm_dealloc_page(page);
 	return succ;
@@ -369,7 +411,7 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 	// 		vm_dealloc_page(p);
 	// }
 	// printf("@@@@@@%d\n",spt->spt_hash.elem_cnt);
-	//if (spt->spt_hash.elem_cnt > 0)
+	// if (spt->spt_hash.elem_cnt > 0)
 	hash_clear(&spt->spt_hash, page_action_kill);
 }
 // hash_elem을 사용해 page를 찾기
@@ -420,7 +462,7 @@ void page_action_copy(struct hash_elem *e, void *aux UNUSED)
 	// vm_alloc_page(VM_ANON,NULL,true);
 	// 3. uninit 일때
 	// vm_alloc_page_with_initializer(page_get_type(src_page), src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux);
-	
+
 	// hash_insert(&dst->spt_hash, e);
 	// spt_insert_page(&dst,p);
 }

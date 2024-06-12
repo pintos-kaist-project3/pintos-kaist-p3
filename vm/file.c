@@ -17,9 +17,11 @@ static const struct page_operations file_ops = {
 	.type = VM_FILE,
 };
 
+struct lock filesys_lock;
 /* The initializer of file vm */
 void vm_file_init(void)
 {
+	lock_init(&filesys_lock);
 }
 
 /* Initialize the file backed page */
@@ -29,6 +31,7 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 	page->operations = &file_ops;
 
 	struct file_page *file_page = &page->file;
+	
 }
 
 /* Swap in the page by read contents from the file. */
@@ -62,7 +65,9 @@ file_backed_destroy(struct page *page)
 	{
 		struct binary_file *f = page->uninit.aux;
 		struct frame *kpage = page->frame;
+		lock_acquire(&filesys_lock);
 		file_write_at(f->b_file, kpage->kva, PGSIZE, f->ofs);
+		lock_release(&filesys_lock);
 		// pml4_set_dirty(thread_current()->pml4, temp_addr, 0);
 		// vm_dealloc_page(p);
 		// destroy(p);
