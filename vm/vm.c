@@ -148,7 +148,7 @@ vm_get_victim(void)
 	/* TODO: The policy for eviction is up to you. */
 	if (list_empty(&frame_table))
 	{
-		printf("들어오지마\n");
+		// printf("들어오지마\n");
 		return NULL;
 	}
 	struct list_elem *frame_elem = list_begin(&frame_table);
@@ -158,7 +158,7 @@ vm_get_victim(void)
 		if (victim->page->operations->type != VM_UNINIT)
 		{
 			list_pop_front(&frame_table);
-			printf("들오와야겠지..??\n");
+			// printf("들오와야겠지..??\n");
 			return victim;
 		}
 		frame_elem = frame_elem->next;
@@ -174,7 +174,7 @@ vm_evict_frame(void)
 	struct frame *victim UNUSED = vm_get_victim();
 	if (victim == NULL)
 	{
-		printf("들어오면 안돼!!\n");
+		// printf("들어오면 안돼!!\n");
 		return NULL;
 	}
 	/* TODO: swap out the victim and return the evicted frame. */
