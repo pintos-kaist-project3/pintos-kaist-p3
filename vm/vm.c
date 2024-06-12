@@ -151,19 +151,19 @@ vm_get_victim(void)
 		printf("들어오지마\n");
 		return NULL;
 	}
-	struct list_elem *frame_elem = list_begin(&frame_table);
-	while (frame_elem != list_end(&frame_table))
-	{
-		struct frame *victim = list_entry(frame_elem, struct frame, frame_elem);
-		if (victim->page->operations->type != VM_UNINIT)
-		{
-			list_pop_front(&frame_table);
-			printf("들오와야겠지..??\n");
-			return victim;
-		}
-		frame_elem = frame_elem->next;
-	}
-	return NULL;
+	struct list_elem  *frame_elem = list_pop_front(&frame_table);
+	// struct list_elem *frame_elem = list_begin(&frame_table);
+	// while (frame_elem != list_end(&frame_table))
+	// {
+	struct frame *victim = list_entry(frame_elem, struct frame, frame_elem);
+	// 	//if (victim->page->operations->type != VM_UNINIT)
+	// 	//{
+	// 	printf("들오와야겠지..??\n");
+		
+	// 	//}
+	// 	frame_elem = frame_elem->next;
+	// }
+	return victim;
 }
 
 /* Evict one page and return the corresponding frame.
@@ -353,6 +353,7 @@ vm_do_claim_page(struct page *page)
 	// printf("kva : %p\n",frame->kva);
 	// printf("va : %p\n",page->va);
 	succ = swap_in(page, frame->kva);
+	
 	list_push_back(&frame_table, &frame->frame_elem);
 	// printf("do_kva : %p\n", frame->kva);
 	if (!succ)

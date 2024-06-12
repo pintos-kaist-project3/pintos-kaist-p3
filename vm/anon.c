@@ -60,18 +60,16 @@ anon_swap_in(struct page *page, void *kva)
 	// printf("1\n");
 	int idx = page->bitmap_idx;
 	printf("swap in, page->bitmap_idx : %d\n", page->bitmap_idx);
-	int j = 0;
 
 	for (int i = 0; i < PGSIZE; i += DISK_SECTOR_SIZE)
 	{
 		bitmap_set(swap_table, idx, 0);
-		idx++;
 		// int capacity = disk_size(swap_disk);
 		// printf("capacity : %d\n", capacity);
 		// printf("4\n");
 
-		disk_read(swap_disk, ((page->bitmap_idx) + j), kva);
-		j++;
+		disk_read(swap_disk, idx, kva);
+		idx++;
 		kva += DISK_SECTOR_SIZE;
 	}
 	// printf("3\n");
@@ -92,15 +90,13 @@ anon_swap_out(struct page *page)
 	void *kva = page->frame->kva;
 
 	printf("swap out start kva : %p\n", kva);
-	int j = 0;
 	for (int i = 0; i < PGSIZE; i += DISK_SECTOR_SIZE)
 	{
 		bitmap_set(swap_table, bitmap_idx, 1);
-		bitmap_idx++;
 		// int capacity = disk_size(swap_disk);
 		// printf("capacity : %d\n", capacity);
-		disk_write(swap_disk, ((page->bitmap_idx ) + j), kva);
-		j++;
+		disk_write(swap_disk, bitmap_idx, kva);
+		bitmap_idx++;
 		kva += DISK_SECTOR_SIZE;
 	}
 	printf("out_kva : %p\n", kva);
