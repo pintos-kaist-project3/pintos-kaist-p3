@@ -29,6 +29,7 @@
     "sstream": "c",
     "streambuf": "c",
     "types.h": "c",
-    "inspect.h": "c"
+    "inspect.h": "c",
+    "bitmap.h": "c"
   }
 }
